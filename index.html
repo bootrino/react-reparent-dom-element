@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<div id="">
+    <span>Demonstration of reparenting in React andrew.stuart@supercoders.com.au</span>
+    <br/>
+    You can simply steal an element from React and place it elsewhere in the DOM.<br/>
+    <br/>
+    In some other component you can switch an element in without React knowing.<br/>
+    <br/>
+    Combine these two techqniues and you can switch DOM elements between React components.<br/>
+    <br/>
+    This is called reparenting.<br/>
+</div>
+
+<div id="stash">
+    <span>the stash:</span>
+</div>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+<style>
+    #stash {
+        display: block;
+        background-color: gold;
+    }
+
+    #video-container1 {
+        width: 100%;
+        background-color: red;
+        padding: 50px;
+    }
+
+    #video-container1 video {
+        width: 300px;
+        height: auto;
+    }
+
+    #video-container2 {
+        width: 100%;
+        background-color: dodgerblue;
+        padding: 50px;
+    }
+
+    #video-container2 video {
+        width: 800px;
+        height: auto;
+    }
+</style>
+
+<script type="text/babel">
+    const {useState, useRef, useCallback, useLayoutEffect} = React;
+    const some_random_stash_key = "c85c2978-afc1-44f6-b145-83d07356a937";
+    const url = `https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4`;
+    const moveDOMElementToStash = (elementToMove, stashKey) => {
+        if (!elementToMove)  throw new Error(`invalid elementToMove`);
+        if (typeof stashKey !== 'string') throw new Error(`stashKey must be a string`);
+        if (stashKey === "") throw new Error(`stashKey must be a non-empty string`);
+        let stashDiv = document.getElementById('stash');
+        if (!stashDiv) {
+            stashDiv = document.createElement('div');
+            stashDiv.id = 'stash';
+            document.body.prepend(stashDiv);
+        }
+        // we have to make sure the stash does not already contain any elements with this stashKey
+        const elementsToDelete = stashDiv.querySelectorAll(`[data-stashkey="${stashKey}"]`);
+        elementsToDelete.forEach(element => element.parentNode.removeChild(element))
+        elementToMove.setAttribute('data-stashkey', stashKey);
+        stashDiv.appendChild(elementToMove);
+    }
+
+    const isDOMElementInStash = (stashKey) => {
+        if (typeof stashKey !== 'string') throw new Error(`stashKey must be a string`);
+        if (stashKey === "") throw new Error(`stashKey must be a non-empty string`);
+        let stashDiv = document.getElementById('stash');
+        if (!stashDiv) return false
+        const stashedElement = stashDiv.querySelector(`[data-stashkey="${stashKey}"]`);
+        return !!stashedElement
+    }
+
+    const swapDOMElementWithDOMElementFromStash = (elementToSwap, stashKey) => {
+        if (typeof stashKey !== 'string') throw new Error(`stashKey must be a string`);
+        if (stashKey === "") throw new Error(`stashKey must be a non-empty string`);
+        let stashDiv = document.getElementById('stash');
+        if (!stashDiv) throw new Error('stashKey not found in stash, you should first isDOMElementInStash(stashKey)');
+        const stashedElement = stashDiv.querySelector(`[data-stashkey="${stashKey}"]`);
+        if (!stashedElement) throw new Error('stashKey not found in stash, you should first isDOMElementInStash(stashKey)');
+        stashedElement.removeAttribute('data-stashkey');
+        if (stashedElement && elementToSwap) elementToSwap.replaceWith(stashedElement)
+        //clean the stash of elements with this stashKey
+        const elementsToDelete = stashDiv.querySelectorAll(`[data-stashkey="${stashKey}"]`);
+        elementsToDelete.forEach(element => element.parentNode.removeChild(element))
+        return stashedElement
+    }
+
+    const Container = () => {
+        const [showVideo, setShowVideo] = useState(true);
+
+        return (
+                <React.Fragment>
+                    <button onClick={() => setShowVideo((prev) => !prev)}>Switch Video Component</button>
+                    {showVideo ? <VideoPlayer1/> : <VideoPlayer2/>}
+                </React.Fragment>
+        )
+    }
+
+    const VideoPlayer1 = () => {
+        const videoRef = useRef(null);
+
+        useLayoutEffect(() => {
+            return () => moveDOMElementToStash(videoRef.current, some_random_stash_key)
+        }, []);
+
+        React.useEffect(() => {
+            if (isDOMElementInStash(some_random_stash_key)) {
+                if (videoRef.current) videoRef.current = swapDOMElementWithDOMElementFromStash(videoRef.current, some_random_stash_key);
+            }
+        }, []);
+
+        return (
+                <div id="video-container1">
+                    <h1>video component smaller</h1>
+                    <button
+                            onClick={() => moveDOMElementToStash(videoRef.current, some_random_stash_key)}>Move element to stash
+                    </button>
+                    <React.Fragment>
+                        <video
+                                muted
+                                controls
+                                autoPlay
+                                width="300px"
+                                ref={videoRef}
+                        >
+                            <source
+                                    src={url}
+                                    type="video/mp4"/>
+                            Your browser does not support the video tag.
+                        </video>
+                    </React.Fragment>
+                </div>
+        );
+    };
+
+    const VideoPlayer2 = () => {
+        const videoRef = useRef(null);
+
+        useLayoutEffect(() => {
+            return () => moveDOMElementToStash(videoRef.current, some_random_stash_key)
+        }, []);
+
+        React.useEffect(() => {
+            if (isDOMElementInStash(some_random_stash_key)) {
+                if (videoRef.current) videoRef.current = swapDOMElementWithDOMElementFromStash(videoRef.current, some_random_stash_key);
+            }
+        }, []);
+
+        return (
+                <div id="video-container2">
+                    <h1>video component bigger</h1>
+                    <button
+                            onClick={() => moveDOMElementToStash(videoRef.current, some_random_stash_key)}>Move element to stash
+                    </button>
+                    <React.Fragment>
+                        <video
+                                muted
+                                controls
+                                autoPlay
+                                width="300px"
+                                ref={videoRef}
+                        >
+                            <source
+                                    src={url}
+                                    type="video/mp4"/>
+                            Your browser does not support the video tag.
+                        </video>
+                    </React.Fragment>
+                </div>
+        );
+    };
+
+    ReactDOM.render(<Container/>, document.getElementById('root'));
+</script>
+</body>
+</html>
